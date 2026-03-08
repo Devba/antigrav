@@ -30,6 +30,22 @@ function getPool(): mysql.Pool {
 }
 
 export const dbService = {
+  async consultarRaw(sql: string): Promise<any[]> {
+    const trimmed = sql.trim();
+    for (const pattern of WRITE_PATTERNS) {
+      if (pattern.test(trimmed)) throw new Error('⛔ Operación bloqueada por seguridad.');
+    }
+    if (!ALLOWED_PREFIXES.test(trimmed)) throw new Error('⛔ Solo se permiten SELECT, SHOW o DESCRIBE.');
+
+    const connection = await getPool().getConnection();
+    try {
+      const [rows] = await connection.query(trimmed);
+      return rows as any[];
+    } finally {
+      connection.release();
+    }
+  },
+
   async consultar(sql: string): Promise<string> {
     const trimmed = sql.trim();
 

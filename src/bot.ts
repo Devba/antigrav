@@ -1,12 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { Bot } from 'grammy';
+import { Bot, InputFile } from 'grammy';
 import { envConfig } from './config/index.js';
 import { processUserMessage } from './agent/index.js';
 import { clearHistory } from './db/index.js';
 import { transcribeAudio } from './agent/transcription.js';
 import { vpsService } from './services/vpsConnection.js';
+
+import { chartService } from './services/chartService.js';
 
 export const startBot = () => {
   if (!envConfig.telegramBotToken || envConfig.telegramBotToken.includes('SUSTITUYE')) {
@@ -17,11 +19,31 @@ export const startBot = () => {
   // Convierte el Markdown del LLM al subconjunto que Telegram acepta
   const sanitize = (text: string): string =>
     text
-      .replace(/\*\*(.+?)\*\*/gs, '*$1*')   // **bold** → *bold*
-      .replace(/__(.+?)__/gs, '_$1_')         // __italic__ → _italic_
-      .replace(/^[ \t]*\|[-| :]+\|[ \t]*$/gm, '') // eliminar líneas separadoras de tablas
-      .replace(/\[via:/g, '[via:');            // evitar conflictos con links Markdown
+      .replace(/\*\*(.+?)\*\*/gs, '*$1*')
+      .replace(/__(.+?)__/gs, '_$1_')
+      .replace(/^[ \t]*\|[-| :]+\|[ \t]*$/gm, '')
+      .replace(/\[via:/g, '[via:');
+
   const bot = new Bot(envConfig.telegramBotToken);
+
+  // Envía la respuesta: como foto si es un gráfico, como texto si no
+  const sendReply = async (chatId: string | number, reply: string) => {
+    const chartMatch = reply.match(/CHART_PNG:(.+\.png)/);
+    if (chartMatch) {
+      const filePath = chartMatch[1].trim();
+      const caption = reply.replace(/CHART_PNG:[^\n]+\n?/, '').trim();
+      try {
+        await bot.api.sendPhoto(chatId, new InputFile(filePath), {
+          caption: caption ? sanitize(caption) : undefined,
+          parse_mode: 'Markdown',
+        });
+      } finally {
+        chartService.limpiarArchivo(filePath);
+      }
+    } else {
+      await bot.api.sendMessage(chatId, sanitize(reply), { parse_mode: 'Markdown' });
+    }
+  };
 
   // Registrar handler de notificaciones push del VPS
   const primaryUserId = envConfig.telegramAllowedUserIds[0];
@@ -100,7 +122,7 @@ export const startBot = () => {
 
       // Enviar el texto transcrito al agente
       const reply = await processUserMessage(userId, transcription);
-      await ctx.reply(sanitize(reply), { parse_mode: 'Markdown' });
+      await sendReply(ctx.chat.id, reply);
 
     } catch (error: any) {
       console.error('❌ Error procesando mensaje de voz:', error);
@@ -118,7 +140,7 @@ export const startBot = () => {
 
     try {
       const reply = await processUserMessage(userId, text);
-      await ctx.reply(sanitize(reply), { parse_mode: 'Markdown' });
+      await sendReply(ctx.chat.id, reply);
     } catch (error: any) {
       console.error('❌ Error procesando el mensaje:', error);
       await ctx.reply(`⚠️ Ocurrió un error en mi procesamiento interno: ${error.message}`);
