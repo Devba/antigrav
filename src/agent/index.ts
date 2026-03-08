@@ -25,6 +25,10 @@ Cuando el usuario haga preguntas sobre pagos, clientes, licencias o transaccione
    - \`HOA_Client_Name_Info_Table\` — clientes HOA (clave: License_Number, nombre cliente: Client_Corporate_Name, nombre contacto: Client_Billing_Name)
    - \`AuthorizenetTokens\` — tokens de Authorize.net (campo License)
    - \`ResidentsPayable\` — deudas por residente (clave: License, campos dinero VARCHAR: TotalAmtDue, AnnDues, SpAssmt, FineLatesFees — usar siempre CAST(campo AS DECIMAL(10,2)) para sumarlos)
+   - \`UploadsDepRegister\` — depósitos y categorías contables (campos: LicenseId, amount DECIMAL, GeneralLedgerAcc, ERGLCat, ERGL, GLAcc, BankAccType, Chdepositdate DATE, checkNumber, ResidentId, DepTransaction)
+     · Vínculo: UploadsDepRegister.LicenseId = HOA_Client_Name_Info_Table.License_Number
+     · Usar para: "categorías de ingresos", "depósitos detallados", "conceptos contables", "libro mayor"
+     · amount ya es DECIMAL — no necesita CAST
    - \`ResPayableWithClient\` — vista que ya une residentes con cliente
    - \`ReceivSummary\` — resumen de cobros
    - Vínculo clave: ResidentsPayable.License = HOA_Client_Name_Info_Table.License_Number

@@ -8,7 +8,7 @@ const conn = await mysql.createConnection({
   database: 'hoacontabo24',
 });
 
-const tablas = ['HOA_Client_Name_Info_Table', 'ResidentsPayable', 'AuthorizeApiPayments'];
+const tablas = ['HOA_Client_Name_Info_Table', 'ResidentsPayable', 'AuthorizeApiPayments', 'UploadsDepRegister'];
 
 for (const tabla of tablas) {
   const [cols] = await conn.query(`DESCRIBE \`${tabla}\``);
