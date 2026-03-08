@@ -2,6 +2,7 @@ import { getCurrentTimeDef, getCurrentTime } from './getCurrentTime.js';
 import { gmailSearchDef, gmailSendDef, driveSearchDef, executeGogCommand } from './googleWorkspace.js';
 import { vpsService } from '../services/vpsConnection.js';
 import { saveMemory, deleteMemory, getMemories } from '../db/index.js';
+import { dbService } from '../services/dbService.js';
 
 // Aquí podemos escalar añadiendo más herramientas en el futuro (ElevenLabs, web scraping, etc.)
 export const availableTools = [
@@ -39,6 +40,20 @@ export const availableTools = [
         },
       },
       required: ['clave'],
+    },
+  },
+  {
+    name: 'consultar_negocio',
+    description: 'Ejecuta consultas SQL de solo lectura en la base de datos de negocio (hoacontabo24) para obtener informes de pagos, clientes y licencias. Genera el SQL preciso y llama a esta herramienta.',
+    parameters: {
+      type: 'object',
+      properties: {
+        sql: {
+          type: 'string',
+          description: 'Consulta SQL de solo lectura (SELECT/SHOW/DESCRIBE). Usa backticks para tablas con caracteres especiales. Incluye siempre LIMIT 20 salvo que se pida un conteo.',
+        },
+      },
+      required: ['sql'],
     },
   },
   {
@@ -97,6 +112,11 @@ export const executeTool = async (name: string, args: Record<string, any>): Prom
         if (!userId) return 'Error: se necesita user_id para borrar memoria.';
         const deleted = deleteMemory(userId, args.clave);
         return deleted ? `🗑️ Recuerdo "${args.clave}" eliminado.` : `⚠️ No se encontró ningún recuerdo con clave "${args.clave}".`;
+      }
+      case 'consultar_negocio': {
+        const sql = args.sql;
+        if (!sql) return 'Error: se requiere el parámetro "sql".';
+        return dbService.consultar(sql);
       }
       case 'ejecutar_en_vps': {
         const cmd = args.comando || args.command || args.cmd;

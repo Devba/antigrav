@@ -14,6 +14,11 @@ export const envConfig = {
     googleCreds: process.env.GOOGLE_APPLICATION_CREDENTIALS || './service-account.json',
     vpsIp: process.env.vpsip || '',
     vpsToken: process.env.vpstoke || '',
+    dbHost: process.env.DB_HOST || '',
+    dbPort: parseInt(process.env.DB_PORT || '3306', 10),
+    dbUser: process.env.DB_USER || '',
+    dbPass: process.env.DB_PASS || '',
+    dbName: process.env.DB_NAME || '',
 };
 
 // Validaciones de seguridad en inicio

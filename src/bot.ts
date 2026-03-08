@@ -14,6 +14,13 @@ export const startBot = () => {
     return;
   }
 
+  // Convierte el Markdown del LLM al subconjunto que Telegram acepta
+  const sanitize = (text: string): string =>
+    text
+      .replace(/\*\*(.+?)\*\*/gs, '*$1*')   // **bold** → *bold*
+      .replace(/__(.+?)__/gs, '_$1_')         // __italic__ → _italic_
+      .replace(/^[ \t]*\|[-| :]+\|[ \t]*$/gm, '') // eliminar líneas separadoras de tablas
+      .replace(/\[via:/g, '[via:');            // evitar conflictos con links Markdown
   const bot = new Bot(envConfig.telegramBotToken);
 
   // Registrar handler de notificaciones push del VPS
@@ -93,7 +100,7 @@ export const startBot = () => {
 
       // Enviar el texto transcrito al agente
       const reply = await processUserMessage(userId, transcription);
-      await ctx.reply(reply);
+      await ctx.reply(sanitize(reply), { parse_mode: 'Markdown' });
 
     } catch (error: any) {
       console.error('❌ Error procesando mensaje de voz:', error);
@@ -111,7 +118,7 @@ export const startBot = () => {
 
     try {
       const reply = await processUserMessage(userId, text);
-      await ctx.reply(reply);
+      await ctx.reply(sanitize(reply), { parse_mode: 'Markdown' });
     } catch (error: any) {
       console.error('❌ Error procesando el mensaje:', error);
       await ctx.reply(`⚠️ Ocurrió un error en mi procesamiento interno: ${error.message}`);
