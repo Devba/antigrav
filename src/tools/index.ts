@@ -4,6 +4,7 @@ import { vpsService } from '../services/vpsConnection.js';
 import { saveMemory, deleteMemory, getMemories } from '../db/index.js';
 import { dbService } from '../services/dbService.js';
 import { chartService } from '../services/chartService.js';
+import { sandboxService } from '../services/sandboxService.js';
 
 // Aquí podemos escalar añadiendo más herramientas en el futuro (ElevenLabs, web scraping, etc.)
 export const availableTools = [
@@ -77,6 +78,22 @@ export const availableTools = [
         },
       },
       required: ['sql'],
+    },
+  },
+  {
+    name: 'execute_local_analysis',
+    description: 'Ejecuta un script Node.js en el sandbox local para análisis pesados: reportes con más de 15 filas, cruces de 3+ tablas, generación de CSV/JSON. '
+      + 'El script tiene acceso a mysql2 y a las variables de entorno DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME. '
+      + 'Úsala cuando la respuesta en texto superaría el límite de tokens o el usuario pida un listado completo/exportación.',
+    parameters: {
+      type: 'object',
+      properties: {
+        codigo: {
+          type: 'string',
+          description: 'Script completo de Node.js (ESM, .mjs) que conecta a MySQL, procesa los datos y hace console.log del resultado o guarda un archivo en ./sandbox/.',
+        },
+      },
+      required: ['codigo'],
     },
   },
   {
@@ -166,6 +183,11 @@ export const executeTool = async (name: string, args: Record<string, any>): Prom
         const sql = args.sql;
         if (!sql) return 'Error: se requiere el parámetro "sql".';
         return dbService.consultar(sql);
+      }
+      case 'execute_local_analysis': {
+        const codigo = args.codigo;
+        if (!codigo) return 'Error: se requiere el parámetro "codigo".';
+        return sandboxService.ejecutar(codigo);
       }
       case 'ejecutar_en_vps': {
         const cmd = args.comando || args.command || args.cmd;

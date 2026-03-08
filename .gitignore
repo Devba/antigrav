@@ -7,3 +7,5 @@ client_secret.json*
 service-account.json
 *.log
 .DS_Store
+sandbox/
+temp/
