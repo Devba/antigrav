@@ -37,11 +37,29 @@ export const startBot = () => {
           caption: caption ? sanitize(caption) : undefined,
           parse_mode: 'Markdown',
         });
+      } catch (e: any) {
+        if (e?.error_code === 400 && caption) {
+          await bot.api.sendPhoto(chatId, new InputFile(filePath), {
+            caption: sanitize(caption).replace(/[*_`\[\]()~>#+=|{}.!\\]/g, ''),
+          });
+        } else if (e?.error_code !== 400) {
+          throw e;
+        }
       } finally {
         chartService.limpiarArchivo(filePath);
       }
     } else {
-      await bot.api.sendMessage(chatId, sanitize(reply), { parse_mode: 'Markdown' });
+      const sanitized = sanitize(reply);
+      try {
+        await bot.api.sendMessage(chatId, sanitized, { parse_mode: 'Markdown' });
+      } catch (e: any) {
+        if (e?.error_code === 400) {
+          const plain = sanitized.replace(/[*_`\[\]()~>#+=|{}.!\\]/g, '');
+          await bot.api.sendMessage(chatId, plain);
+        } else {
+          throw e;
+        }
+      }
     }
   };
 
