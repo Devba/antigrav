@@ -8,8 +8,11 @@ export const envConfig = {
     groqApiKey: process.env.GROQ_API_KEY || '',
     openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
     openRouterModel: process.env.OPENROUTER_MODEL || 'openrouter/free',
+    openRouterPreset: process.env.OPENROUTER_PRESET || '@preset/open-gravity-primary',
     dbPath: process.env.DB_PATH || './memory.db',
     googleCreds: process.env.GOOGLE_APPLICATION_CREDENTIALS || './service-account.json',
+    vpsIp: process.env.vpsip || '',
+    vpsToken: process.env.vpstoke || '',
 };
 
 // Validaciones de seguridad en inicio

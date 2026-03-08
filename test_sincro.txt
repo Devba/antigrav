@@ -1,0 +1,3 @@
+Este es un archivo de prueba para verificar la sincronización entre el agente local y el VPS.
+Fecha: 2026-03-07
+Estado: Swarm activado.

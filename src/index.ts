@@ -1,4 +1,5 @@
 import { startBot } from './bot.js';
+import { vpsService } from './services/vpsConnection.js';
 
 console.log('🚀 Iniciando OpenGravity...');
 startBot();

@@ -39,7 +39,7 @@ const callOpenRouter = async (messages: any[], tools: any[]) => {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            model: envConfig.openRouterModel,
+            model: envConfig.openRouterPreset,
             messages,
             tools: tools.length > 0 ? tools : undefined,
         })
