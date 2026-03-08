@@ -67,7 +67,11 @@ Cuando el usuario pida reportes, listados o exportaciones que impliquen:
 1. Se conecte a MySQL usando las variables de entorno disponibles: \`DB_HOST\`, \`DB_PORT\`, \`DB_USER\`, \`DB_PASS\`, \`DB_NAME\`.
 2. Ejecute la query necesaria.
 3. Guarde el resultado en \`./sandbox/reporte_<nombre>.csv\` o \`./sandbox/reporte_<nombre>.json\` usando \`fs\`.
-4. Haga \`console.log\` de un resumen ejecutivo (máx. 5 líneas) con totales o estadísticas clave.
+4. Haga \`console.log\` de la siguiente salida **exacta** (el bot la detecta y envía el archivo a Telegram):
+\`\`\`
+SEND_FILE:./sandbox/nombre_del_archivo.csv
+<resumen ejecutivo en 3-5 líneas: totales, estadísticas clave>
+\`\`\`
 
 El usuario recibirá el resumen ejecutivo en el chat. Si quiere el archivo completo, ya está en \`./sandbox/\`.
 
@@ -83,7 +87,7 @@ const [rows] = await conn.query('SELECT lastname, Res_Email, License FROM Reside
 await conn.end();
 const csv = 'Apellido,Email,Licencia\\n' + rows.map(r => \`\${r.lastname},\${r.Res_Email},\${r.License}\`).join('\\n');
 fs.writeFileSync('./sandbox/residentes_emails.csv', csv);
-console.log(\`Total residentes: \${rows.length}\\nArchivo guardado: ./sandbox/residentes_emails.csv\`);
+console.log(\`SEND_FILE:./sandbox/residentes_emails.csv\nTotal residentes: \${rows.length}\`);
 \`\`\`
 `;
 
@@ -145,6 +149,12 @@ export const processUserMessage = async (userId: string, text: string): Promise<
         const toolResult = await executeTool(functionName, { ...functionArgs, user_id: userId });
 
         console.log(`[Agente] Tool Result para ${functionName} obtenido.`);
+
+        // Si el resultado es un archivo para enviar, devolvemos directamente sin pasar al LLM
+        if (toolResult.startsWith('SEND_FILE:') || toolResult.startsWith('CHART_PNG:')) {
+          saveMessage(userId, 'assistant', toolResult);
+          return toolResult;
+        }
 
         // Formato estándar OpenAI para tool responses (sin 'name', no es parte del spec)
         messages.push({

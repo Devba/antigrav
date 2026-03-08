@@ -29,6 +29,26 @@ export const startBot = () => {
   // Envía la respuesta: como foto si es un gráfico, como texto si no
   const sendReply = async (chatId: string | number, reply: string) => {
     const chartMatch = reply.match(/CHART_PNG:(.+\.png)/);
+    const fileMatch = reply.match(/SEND_FILE:([^\n]+)/);
+    if (fileMatch && !chartMatch) {
+      const filePath = fileMatch[1].trim();
+      const caption = reply.replace(/SEND_FILE:[^\n]+\n?/, '').trim();
+      try {
+        await bot.api.sendDocument(chatId, new InputFile(filePath), {
+          caption: caption ? sanitize(caption) : undefined,
+          parse_mode: 'Markdown',
+        });
+      } catch (e: any) {
+        if (e?.error_code === 400 && caption) {
+          await bot.api.sendDocument(chatId, new InputFile(filePath), {
+            caption: sanitize(caption).replace(/[*_`\[\]()~>#+=|{}.!\\]/g, ''),
+          });
+        } else if (e?.error_code !== 400) {
+          throw e;
+        }
+      }
+      return;
+    }
     if (chartMatch) {
       const filePath = chartMatch[1].trim();
       const caption = reply.replace(/CHART_PNG:[^\n]+\n?/, '').trim();
