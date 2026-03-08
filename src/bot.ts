@@ -6,6 +6,7 @@ import { envConfig } from './config/index.js';
 import { processUserMessage } from './agent/index.js';
 import { clearHistory } from './db/index.js';
 import { transcribeAudio } from './agent/transcription.js';
+import { vpsService } from './services/vpsConnection.js';
 
 export const startBot = () => {
   if (!envConfig.telegramBotToken || envConfig.telegramBotToken.includes('SUSTITUYE')) {
@@ -14,6 +15,16 @@ export const startBot = () => {
   }
 
   const bot = new Bot(envConfig.telegramBotToken);
+
+  // Registrar handler de notificaciones push del VPS
+  const primaryUserId = envConfig.telegramAllowedUserIds[0];
+  if (primaryUserId) {
+    vpsService.setNotificationHandler((msg: string) => {
+      bot.api.sendMessage(primaryUserId, msg).catch(err =>
+        console.error('❌ Error enviando notificación VPS a Telegram:', err)
+      );
+    });
+  }
 
   // MIDDLEWARE DE SEGURIDAD: Whitelist
   bot.use(async (ctx, next) => {
