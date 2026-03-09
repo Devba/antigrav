@@ -7,8 +7,8 @@ import { processUserMessage } from './agent/index.js';
 import { clearHistory } from './db/index.js';
 import { transcribeAudio } from './agent/transcription.js';
 import { vpsService } from './services/vpsConnection.js';
-
 import { chartService } from './services/chartService.js';
+import { schedulerService } from './services/schedulerService.js';
 
 export const startBot = () => {
   if (!envConfig.telegramBotToken || envConfig.telegramBotToken.includes('SUSTITUYE')) {
@@ -195,6 +195,18 @@ export const startBot = () => {
     onStart: (botInfo) => {
       console.log(`✅ Bot OpenGravity iniciado de forma segura como @${botInfo.username}`);
       console.log(`🔒 Usuarios permitidos: ${envConfig.telegramAllowedUserIds.join(', ')}`);
+
+      // Arrancar el scheduler con el executor que procesa la tarea y notifica al usuario
+      schedulerService.setExecutor(async (userId, instruction, notificationText) => {
+        try {
+          const result = await processUserMessage(userId, instruction);
+          await sendReply(userId, result);
+        } catch (e) {
+          console.error('[Scheduler] Error ejecutando tarea:', e);
+          await bot.api.sendMessage(userId, `⚠️ Error ejecutando tarea programada: ${notificationText}`);
+        }
+      });
+      schedulerService.start();
     }
   });
 };

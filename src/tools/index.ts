@@ -1,7 +1,7 @@
 import { getCurrentTimeDef, getCurrentTime } from './getCurrentTime.js';
 import { gmailSearchDef, gmailSendDef, driveSearchDef, executeGogCommand } from './googleWorkspace.js';
 import { vpsService } from '../services/vpsConnection.js';
-import { saveMemory, deleteMemory, getMemories } from '../db/index.js';
+import { saveMemory, deleteMemory, getMemories, createTask, listUserTasks, cancelTask } from '../db/index.js';
 import { dbService } from '../services/dbService.js';
 import { chartService } from '../services/chartService.js';
 import { sandboxService } from '../services/sandboxService.js';
@@ -78,6 +78,54 @@ export const availableTools = [
         },
       },
       required: ['sql'],
+    },
+  },
+  {
+    name: 'programar_tarea',
+    description: 'Programa una tarea para ejecutarse en el futuro (una vez o recurrentemente). '
+      + 'Usa esta herramienta cuando el usuario pida algo con expresiones temporales como '
+      + '"en X minutos", "mañana a las X", "cada lunes", "diariamente", etc.',
+    parameters: {
+      type: 'object',
+      properties: {
+        instruction: {
+          type: 'string',
+          description: 'Instrucción clara para ejecutar cuando llegue el momento (ej: "Genera el reporte de pagos de marzo y envíalo").',
+        },
+        notification_text: {
+          type: 'string',
+          description: 'Texto breve (<60 chars) para notificar al usuario cuando la tarea se complete (ej: "Reporte de Marzo listo ✅").',
+        },
+        delay_minutes: {
+          type: 'number',
+          description: 'Minutos desde ahora hasta la primera ejecución. Ej: 5 para "dentro de 5 minutos".',
+        },
+        interval_minutes: {
+          type: 'number',
+          description: 'Intervalo en minutos entre ejecuciones recurrentes. Omitir para tareas de una sola vez.',
+        },
+        occurrence_count: {
+          type: 'number',
+          description: 'Número máximo de ejecuciones. Usar 1 para tareas únicas. Omitir para recurrencia infinita.',
+        },
+      },
+      required: ['instruction', 'notification_text', 'delay_minutes'],
+    },
+  },
+  {
+    name: 'listar_tareas',
+    description: 'Lista todas las tareas programadas activas del usuario.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    name: 'cancelar_tarea',
+    description: 'Cancela una tarea programada por su ID.',
+    parameters: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'number', description: 'ID de la tarea a cancelar.' },
+      },
+      required: ['task_id'],
     },
   },
   {
@@ -183,6 +231,33 @@ export const executeTool = async (name: string, args: Record<string, any>): Prom
         const sql = args.sql;
         if (!sql) return 'Error: se requiere el parámetro "sql".';
         return dbService.consultar(sql);
+      }
+      case 'programar_tarea': {
+        const userId = args.user_id || args.userId;
+        if (!userId) return 'Error: se necesita user_id.';
+        const delayMs = (args.delay_minutes || 0) * 60_000;
+        const intervalMs = args.interval_minutes ? args.interval_minutes * 60_000 : null;
+        const occurrenceCount = args.occurrence_count ?? (intervalMs ? null : 1);
+        const nextRunAt = Date.now() + delayMs;
+        const id = createTask(userId, args.instruction, args.notification_text, nextRunAt, intervalMs, occurrenceCount);
+        const runAt = new Date(nextRunAt).toLocaleString('es-ES', { timeZone: 'America/New_York', hour12: false });
+        const recurrente = intervalMs ? ` (cada ${args.interval_minutes} min${occurrenceCount ? `, máx ${occurrenceCount} veces` : ''})` : ' (una sola vez)';
+        return `✅ Tarea #${id} programada para: *${runAt}*${recurrente}\nInstrucción: "${args.instruction.slice(0, 80)}"`;
+      }
+      case 'listar_tareas': {
+        const userId = args.user_id || args.userId;
+        if (!userId) return 'Error: se necesita user_id.';
+        const tasks = listUserTasks(userId);
+        if (!tasks.length) return '📭 No tienes tareas programadas activas.';
+        return tasks.map(t => {
+          const when = new Date(t.next_run_at).toLocaleString('es-ES', { timeZone: 'America/New_York', hour12: false });
+          const rec = t.interval_ms ? ` | cada ${Math.round(t.interval_ms / 60000)} min` : ' | única';
+          return `#${t.id} — ${when}${rec}\n  "${t.instruction.slice(0, 70)}"`;
+        }).join('\n\n');
+      }
+      case 'cancelar_tarea': {
+        cancelTask(Number(args.task_id));
+        return `🗑️ Tarea #${args.task_id} cancelada.`;
       }
       case 'execute_local_analysis': {
         const codigo = args.codigo;
