@@ -19,6 +19,9 @@ export const envConfig = {
     dbUser: process.env.DB_USER || '',
     dbPass: process.env.DB_PASS || '',
     dbName: process.env.DB_NAME || '',
+    wsControlEnabled: (process.env.WS_CONTROL_ENABLED || 'false').toLowerCase() === 'true',
+    wsControlUrl: process.env.WS_CONTROL_URL || 'ws://127.0.0.1:3310',
+    wsControlToken: process.env.WS_CONTROL_TOKEN || '',
 };
 
 // Validaciones de seguridad en inicio

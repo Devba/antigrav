@@ -9,6 +9,7 @@ import { transcribeAudio } from './agent/transcription.js';
 import { vpsService } from './services/vpsConnection.js';
 import { chartService } from './services/chartService.js';
 import { schedulerService } from './services/schedulerService.js';
+import { parseSecCommand, runWsControlAction } from './services/wsControl.js';
 
 export const startBot = () => {
   if (!envConfig.telegramBotToken || envConfig.telegramBotToken.includes('SUSTITUYE')) {
@@ -114,6 +115,22 @@ export const startBot = () => {
     const userId = ctx.from!.id.toString();
     clearHistory(userId);
     await ctx.reply('🧹 Memoria borrada. ¿En qué te puedo ayudar ahora?');
+  });
+
+  bot.command('sec', async (ctx) => {
+    const text = ctx.message?.text || '';
+    const args = text.replace(/^\/sec(?:@\w+)?\s*/i, '').trim();
+
+    const parsed = parseSecCommand(args);
+    if (!parsed.ok) {
+      await ctx.reply(`❌ ${parsed.message}`);
+      return;
+    }
+
+    await ctx.replyWithChatAction('typing');
+    const result = await runWsControlAction(parsed.request);
+    const safe = result.length > 3900 ? `${result.slice(0, 3900)}\n... (truncado)` : result;
+    await ctx.reply(safe);
   });
 
   // Manejador de mensajes de voz
